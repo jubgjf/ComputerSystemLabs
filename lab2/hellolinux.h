@@ -1,0 +1,9 @@
+#ifndef COMPUTERSYSTEMLABS_HELLOLINUX_H
+#define COMPUTERSYSTEMLABS_HELLOLINUX_H
+
+/**
+ * 输出hello信息，并输出当前程序位数
+ */
+void hellolinux();
+
+#endif //COMPUTERSYSTEMLABS_HELLOLINUX_H

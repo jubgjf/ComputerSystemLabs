@@ -7,3 +7,4 @@
 实验名称|链接
 :-:|:-:
 Linux下C工具运用|[Lab 1](./lab1)
+DataLab数据表示|[Lab 2](./lab2)
