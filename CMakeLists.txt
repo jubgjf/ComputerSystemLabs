@@ -41,3 +41,7 @@ set_target_properties(lab2_str PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32"
 add_executable(lab2_utf8len lab2/4_1-utf8len.c)
 
 add_executable(lab2_ftoa lab2/5_4-ftoa.c)
+
+add_executable(lab2_fib_dg lab2/6_1-fib_dg.c)
+
+add_executable(lab2_fib_loop lab2/6_2-fib_loop.c)
