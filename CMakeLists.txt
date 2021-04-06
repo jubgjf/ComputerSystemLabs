@@ -45,3 +45,7 @@ add_executable(lab2_ftoa lab2/5_4-ftoa.c)
 add_executable(lab2_fib_dg lab2/6_1-fib_dg.c)
 
 add_executable(lab2_fib_loop lab2/6_2-fib_loop.c)
+
+add_executable(lab2_zero lab2/6_4-zero.c)
+
+add_executable(lab2_float11 lab2/7_2-float11.c)
