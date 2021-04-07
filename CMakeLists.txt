@@ -49,3 +49,7 @@ add_executable(lab2_fib_loop lab2/6_2-fib_loop.c)
 add_executable(lab2_zero lab2/6_4-zero.c)
 
 add_executable(lab2_float11 lab2/7_2-float11.c)
+
+add_executable(lab2_floatx lab2/7_3-floatx.c)
+
+add_executable(lab2_float0 lab2/7_4-float0.c)
