@@ -8,3 +8,5 @@
 :-:|:-:
 Linux下C工具运用|[Lab 1](./lab1)
 DataLab数据表示|[Lab 2](./lab2)
+
+BufLab缓冲器漏洞攻击|[Lab 4](./lab4)
