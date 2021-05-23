@@ -8,5 +8,12 @@ disass: phase1.o phase2.o phase3.o phase4.o phase5.o
 	objdump -d phase4.o > asm/phase4.s
 	objdump -d phase5.o > asm/phase5.s
 
+link1: main.o phase1.o
+	mkdir -p ans/
+	$(CC) -o ans/linkbomb1 main.o phase1.o
+
+run1: link1
+	./ans/linkbomb1
+
 clean:
 	rm ans/*
