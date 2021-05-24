@@ -1,5 +1,11 @@
 CC = gcc -m32
 
+linkaddress: linkaddress.c
+	$(CC) linkaddress.c -o linkaddress
+
+runlink: linkaddress
+	./linkaddress -u 1190200703 管健男
+
 disass1: phase1.o
 	mkdir -p asm/
 	objdump -rd phase1.o > asm/phase1.s
