@@ -23,15 +23,15 @@ typedef struct cache_line {
     unsigned long long int lru;
 } cache_line_t;
 
-typedef cache_line_t* cache_set_t;
-typedef cache_set_t* cache_t;
+typedef cache_line_t *cache_set_t;
+typedef cache_set_t *cache_t;
 
 /* Globals set by command line args */
 int verbosity = 0; /* print trace if set */
 int s = 0; /* set index bits */
 int b = 0; /* block offset bits */
 int E = 0; /* associativity */
-char* trace_file = NULL;
+char *trace_file = NULL;
 
 /* Derived from command line args */
 int S; /* number of sets */
@@ -44,29 +44,31 @@ int eviction_count = 0;
 unsigned long long int lru_counter = 1;
 
 /* The cache we are simulating */
-cache_t cache;  
+cache_t cache;
 mem_addr_t set_index_mask;
 
 /* 
  * initCache - Allocate memory, write 0's for valid and tag and LRU
  * also computes the set_index_mask
  */
-void initCache()
-{
- //todo...
-
+void initCache() {
+    cache = (cache_t) malloc(sizeof(cache_line_t) * E * S);
+    for (int i = 0; i < S; i++) {
+        cache[i] = (cache_set_t) malloc(sizeof(cache_line_t) * E);
+        for (int j = 0; j < E; j++) {
+            cache[i][j].valid = 0;
+            cache[i][j].tag = 0;
+            cache[i][j].lru = 0;
+        }
+    }
 }
-
 
 /* 
  * freeCache - free allocated memory
  */
-void freeCache()
-{
- //todo...
-
+void freeCache() {
+    free(cache);
 }
-
 
 /* 
  * accessData - Access data at memory address addr.
@@ -74,41 +76,79 @@ void freeCache()
  *   If it is not in cache, bring it in cache, increase miss count.
  *   Also increase eviction_count if a line is evicted.
  */
-void accessData(mem_addr_t addr)
-{
- //todo...
+void accessData(mem_addr_t addr) {
+    mem_addr_t set_index = (addr << (64 - s - b)) >> (64 - s);
+    mem_addr_t tag = addr >> (b + s);
 
+    // 遍历组里的每一行，如果 tag 相同且 valid == 1，则 hit，并更新 LRU 时间
+    for (int i = 0; i < E; ++i) {
+        if (cache[set_index][i].tag == tag && cache[set_index][i].valid) {
+            cache[set_index][i].lru = lru_counter;
+            lru_counter++;
+            hit_count++;
+            printf("hit ");
+            return;
+        }
+    }
+
+    // 没有 tag 相同且 valid == 1 的，则查找空行，并更新 LRU 时间
+    for (int i = 0; i < E; ++i) {
+        if (cache[set_index][i].valid == 0) {
+            cache[set_index][i].valid = 1;
+            cache[set_index][i].tag = tag;
+            cache[set_index][i].lru = lru_counter;
+            lru_counter++;
+            miss_count++;
+            printf("miss ");
+            return;
+        }
+    }
+
+    // 没有空行，则替换掉 LRU 最小的
+    unsigned long long min_lru = cache[set_index][0].lru;
+    unsigned long long min_lru_index = 0;
+    for (int i = 0; i < E; ++i) {
+        if (cache[set_index][i].lru < min_lru) {
+            min_lru = cache[set_index][i].lru;
+            min_lru_index = i;
+        }
+    }
+    cache[set_index][min_lru_index].tag = tag;
+    cache[set_index][min_lru_index].lru = lru_counter;
+    lru_counter++;
+    miss_count++;
+    printf("miss ");
+    eviction_count++;
+    printf("eviction ");
 }
-
 
 /*
  * replayTrace - replays the given trace file against the cache 
  */
-void replayTrace(char* trace_fn)
-{
+void replayTrace(char *trace_fn) {
     char buf[1000];
-    mem_addr_t addr=0;
-    unsigned int len=0;
-    FILE* trace_fp = fopen(trace_fn, "r");
+    mem_addr_t addr = 0;
+    unsigned int len = 0;
+    FILE *trace_fp = fopen(trace_fn, "r");
 
-    if(!trace_fp){
+    if (!trace_fp) {
         fprintf(stderr, "%s: %s\n", trace_fn, strerror(errno));
         exit(1);
     }
 
-    while( fgets(buf, 1000, trace_fp) != NULL) {
-        if(buf[1]=='S' || buf[1]=='L' || buf[1]=='M') {
-            sscanf(buf+3, "%llx,%u", &addr, &len);
-      
-            if(verbosity)
+    while (fgets(buf, 1000, trace_fp) != NULL) {
+        if (buf[1] == 'S' || buf[1] == 'L' || buf[1] == 'M') {
+            sscanf(buf + 3, "%llx,%u", &addr, &len);
+
+            if (verbosity)
                 printf("%c %llx,%u ", buf[1], addr, len);
 
             accessData(addr);
 
             /* If the instruction is R/W then access again */
-            if(buf[1]=='M')
+            if (buf[1] == 'M')
                 accessData(addr);
-            
+
             if (verbosity)
                 printf("\n");
         }
@@ -120,8 +160,7 @@ void replayTrace(char* trace_fn)
 /*
  * printUsage - Print usage info
  */
-void printUsage(char* argv[])
-{
+void printUsage(char *argv[]) {
     printf("Usage: %s [-hv] -s <num> -E <num> -b <num> -t <file>\n", argv[0]);
     printf("Options:\n");
     printf("  -h         Print this help message.\n");
@@ -139,33 +178,32 @@ void printUsage(char* argv[])
 /*
  * main - Main routine 
  */
-int main(int argc, char* argv[])
-{
+int main(int argc, char *argv[]) {
     char c;
 
-    while( (c=getopt(argc,argv,"s:E:b:t:vh")) != -1){
-        switch(c){
-        case 's':
-            s = atoi(optarg);
-            break;
-        case 'E':
-            E = atoi(optarg);
-            break;
-        case 'b':
-            b = atoi(optarg);
-            break;
-        case 't':
-            trace_file = optarg;
-            break;
-        case 'v':
-            verbosity = 1;
-            break;
-        case 'h':
-            printUsage(argv);
-            exit(0);
-        default:
-            printUsage(argv);
-            exit(1);
+    while ((c = getopt(argc, argv, "s:E:b:t:vh")) != -1) {
+        switch (c) {
+            case 's':
+                s = atoi(optarg);
+                break;
+            case 'E':
+                E = atoi(optarg);
+                break;
+            case 'b':
+                b = atoi(optarg);
+                break;
+            case 't':
+                trace_file = optarg;
+                break;
+            case 'v':
+                verbosity = 1;
+                break;
+            case 'h':
+                printUsage(argv);
+                exit(0);
+            default:
+                printUsage(argv);
+                exit(1);
         }
     }
 
@@ -177,8 +215,9 @@ int main(int argc, char* argv[])
     }
 
     /* Compute S, E and B from command line args */
-    ...
- 
+    S = 1 << s;
+    B = 1 << b;
+
     /* Initialize cache */
     initCache();
 
@@ -186,7 +225,7 @@ int main(int argc, char* argv[])
     printf("DEBUG: S:%u E:%u B:%u trace:%s\n", S, E, B, trace_file);
     printf("DEBUG: set_index_mask: %llu\n", set_index_mask);
 #endif
- 
+
     replayTrace(trace_file);
 
     /* Free allocated memory */
