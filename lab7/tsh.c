@@ -399,6 +399,40 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+    int olderrno = errno;
+
+    int status;
+    pid_t pid;
+    sigset_t mask_all, make_prev;
+    struct job_t *job = NULL;
+
+    sigfillset(&mask_all);
+
+    // 立即返回，返回“停止”或“终止”的进程 pid
+    // WUNTRACED 保证子进程停止时，父进程也不会卡死
+    while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) {
+        if (WIFEXITED(status)) {    // 通过 return 或 exit 正常终止
+            sigprocmask(SIG_BLOCK, &mask_all, &make_prev);
+            deletejob(jobs, pid);
+            sigprocmask(SIG_SETMASK, &make_prev, NULL);
+        } else if (WIFSIGNALED(status)) {   // 通过一个未被捕获的信号终止
+            job = getjobpid(jobs, pid);
+            sigprocmask(SIG_BLOCK, &mask_all, &make_prev);
+            printf("Job [%d] (%d) terminated by signal %d\n",
+                   job->jid, job->pid, WTERMSIG(status));
+            deletejob(jobs, pid);
+            sigprocmask(SIG_SETMASK, &make_prev, NULL);
+        } else {    // 进程停止
+            job = getjobpid(jobs, pid);
+            sigprocmask(SIG_BLOCK, &mask_all, &make_prev);
+            printf("Job [%d] (%d) stopped by signal %d\n",
+                   job->jid, job->pid, WSTOPSIG(status));
+            job->state = ST;
+            sigprocmask(SIG_SETMASK, &make_prev, NULL);
+        }
+    }
+
+    errno = olderrno;
     return;
 }
 
