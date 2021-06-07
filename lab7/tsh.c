@@ -376,6 +376,13 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    sigset_t mask_none;
+    sigemptyset(&mask_none);
+
+    while (fgpid(jobs) > 0)
+        // 不阻塞任何信号，挂起调用者
+        sigsuspend(&mask_none);
+
     return;
 }
 
