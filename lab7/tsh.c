@@ -402,6 +402,23 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    int olderrno = errno;
+    sigset_t mask_all, prev_all;
+    pid_t pid;
+
+    // 阻塞所有信号
+    sigfillset(&mask_all);
+
+    sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
+    pid = fgpid(jobs);
+    sigprocmask(SIG_SETMASK, &prev_all, NULL);
+
+    // 杀死前台进程
+    if (pid) {
+        kill(-pid, SIGINT);
+    }
+
+    errno = olderrno;
     return;
 }
 
