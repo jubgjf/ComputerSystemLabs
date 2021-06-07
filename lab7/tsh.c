@@ -429,6 +429,23 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    int olderrno = errno;
+    sigset_t mask_all, prev_all;
+    pid_t pid;
+
+    // 阻塞所有信号
+    sigfillset(&mask_all);
+
+    sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
+    pid = fgpid(jobs);
+    sigprocmask(SIG_SETMASK, &prev_all, NULL);
+
+    // 向前台进程发送 SIGTSTP
+    if (pid) {
+        kill(-pid, SIGTSTP);
+    }
+    errno = olderrno;
+
     return;
 }
 
