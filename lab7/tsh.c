@@ -384,12 +384,16 @@ void do_bgfg(char **argv) {
  * waitfg - Block until process pid is no longer the foreground process
  */
 void waitfg(pid_t pid) {
-    sigset_t mask_none;
-    sigemptyset(&mask_none);
+    sigset_t mask_empty, mask_all, mask_prev;
 
-    while (fgpid(jobs) > 0)
-        // 不阻塞任何信号，挂起调用者
-        sigsuspend(&mask_none);
+    sigemptyset(&mask_empty);
+    sigfillset(&mask_all);
+
+    sigprocmask(SIG_SETMASK, &mask_all, &mask_prev);
+    while (pid == fgpid(jobs)) {
+        sigsuspend(&mask_empty);
+    }
+    sigprocmask(SIG_SETMASK, &mask_prev, NULL);
 
     return;
 }
