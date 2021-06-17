@@ -19,7 +19,7 @@ test: mdriver
 test_short1: mdriver
 	./mdriver -vV -f short1-bal.rep
 
-test_short1: mdriver
+test_short2: mdriver
 	./mdriver -vV -f short2-bal.rep
 
 mdriver.o: mdriver.c fsecs.h fcyc.h clock.h memlib.h config.h mm.h
