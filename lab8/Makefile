@@ -14,7 +14,13 @@ mdriver: $(OBJS)
 	$(CC) $(CFLAGS) -o mdriver $(OBJS)
 
 test: mdriver
-	./mdriver -v -t traces/
+	./mdriver -vV -t traces/
+
+test_short1: mdriver
+	./mdriver -vV -f short1-bal.rep
+
+test_short1: mdriver
+	./mdriver -vV -f short2-bal.rep
 
 mdriver.o: mdriver.c fsecs.h fcyc.h clock.h memlib.h config.h mm.h
 memlib.o: memlib.c memlib.h
