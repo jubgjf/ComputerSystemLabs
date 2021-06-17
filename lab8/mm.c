@@ -275,7 +275,6 @@ static void *coalesce(void *ptr) {
 static void *place(void *ptr, size_t size) {
     size_t total_size = GET_SIZE(HDRP(ptr));
     size_t redundant_size = total_size - size;
-    size_t critical_size = 96;   // 用于减少外部碎片的临界大小，可以适当调整
 
     delete_node(ptr);
 
@@ -283,18 +282,6 @@ static void *place(void *ptr, size_t size) {
         // 剩余大小小于对齐字节，不做分割
         PUT(HDRP(ptr), PACK(total_size, 1));
         PUT(FTRP(ptr), PACK(total_size, 1));
-
-        return ptr;
-    } else if (size >= critical_size) {
-        // 分割空闲的 ptr 块：前半部分不使用，后半部分用于装载 size
-        PUT(HDRP(ptr), PACK(redundant_size, 0));
-        PUT(FTRP(ptr), PACK(redundant_size, 0));
-        PUT(HDRP(NEXT_BLKP(ptr)), PACK(size, 1));
-        PUT(FTRP(NEXT_BLKP(ptr)), PACK(size, 1));
-
-        insert_node(ptr, redundant_size);
-
-        return NEXT_BLKP(ptr);
     } else {
         // 分割空闲的 ptr 块：前半部分用于装载 size，后半部分不使用
         PUT(HDRP(ptr), PACK(size, 1));
@@ -303,9 +290,9 @@ static void *place(void *ptr, size_t size) {
         PUT(FTRP(NEXT_BLKP(ptr)), PACK(redundant_size, 0));
 
         insert_node(NEXT_BLKP(ptr), redundant_size);
-
-        return ptr;
     }
+
+    return ptr;
 }
 
 int mm_init(void) {
