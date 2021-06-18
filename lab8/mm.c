@@ -131,7 +131,7 @@ static void *coalesce(void *ptr);
 /**
  * 在 ptr 指向的空闲块中分配 size 大小的块
  * <br/>
- * 若剩下的空间大于 ALIGNMENT，则将剩余空间分割并插入到分离空闲链表
+ * 若剩下的空间大于 ALIGNMENT * 2，则将剩余空间分割并插入到分离空闲链表
  *
  * @param ptr 空闲块首地址
  * @param size 待分配大小
@@ -278,7 +278,7 @@ static void *place(void *ptr, size_t size) {
 
     delete_node(ptr);
 
-    if (redundant_size < DSIZE * 2) {
+    if (redundant_size < ALIGNMENT * 2) {
         // 剩余大小小于对齐字节，不做分割
         PUT(HDRP(ptr), PACK(total_size, 1));
         PUT(FTRP(ptr), PACK(total_size, 1));
