@@ -83,6 +83,10 @@ team_t team = {
 #define ALIGNMENT DSIZE
 #define ALIGN(size) ((((size) + (ALIGNMENT-1)) / (ALIGNMENT)) * (ALIGNMENT))
 
+/**
+ * 堆的起始位置（序言块指针）
+ */
+char *heap;
 
 /**
  * 分离空闲链表
@@ -138,6 +142,19 @@ static void *coalesce(void *ptr);
  * @return 返回块指针
  */
 static void *place(void *ptr, size_t size);
+
+/**
+ * 检查堆的一致性，包括：
+ * <br/>
+ * 空闲列表中的每个块是否都标识为空闲；
+ * 是否有连续的空闲块没有被合并；
+ * 是否每个空闲块都在空闲链表中；
+ * 分配的块是否有重叠；
+ * 堆块中的指针是否指向有效的堆地址。
+ *
+ * @return 当且仅当堆是一致的，返回1；否则返回0
+ */
+static int mm_check(void);
 
 
 static void *extend_heap(size_t words) {
@@ -295,9 +312,92 @@ static void *place(void *ptr, size_t size) {
     return ptr;
 }
 
-int mm_init(void) {
-    char *heap;
+static int mm_check(void) {
+    // 使用 mm_check 进行测试时，将下一行的 return 注释即可
+    return 1;
 
+    // 空闲列表中的每个块是否都标识为空闲
+    for (int i = 0; i < LISTMAX; ++i) {
+        void *ptr = segregated_free_lists[i];
+        while (ptr && GET(ptr)) {
+            if (GET_ALLOC(HDRP(ptr))) {
+                // 空闲链表中存在已分配的块
+                return 0;
+            }
+            ptr = NEXT_CLS(ptr);
+        }
+    }
+
+    // 是否有连续的空闲块没有被合并
+    char *iter_ptr = heap;
+    while (GET_SIZE(HDRP(iter_ptr)) > 0) {
+        if (GET_SIZE(HDRP(NEXT_BLKP(iter_ptr))) > 0) {
+            char *iter_next_ptr = NEXT_BLKP(iter_ptr);
+            if (!GET_ALLOC(HDRP(iter_ptr)) &&
+                !GET_ALLOC(HDRP(iter_next_ptr))) {
+                // 存在两个相邻的空闲块
+                return 0;
+            }
+            iter_ptr = iter_next_ptr;
+        }
+        break;
+    }
+
+    // 是否每个空闲块都在空闲链表中
+    iter_ptr = heap;
+    int free_block_count_in_addr = 0;
+    while (GET_SIZE(HDRP(iter_ptr)) > 0) {
+        if (!GET_ALLOC(HDRP(iter_ptr))) {
+            // 当前块是空闲块
+            free_block_count_in_addr++;
+        }
+        iter_ptr = NEXT_BLKP(iter_ptr);
+    }
+    int free_block_count_in_list = 0;
+    for (int i = 0; i < LISTMAX; ++i) {
+        void *ptr = segregated_free_lists[i];
+        while (ptr) {
+            free_block_count_in_list++;
+            ptr = NEXT_CLS(ptr);
+        }
+    }
+    if (free_block_count_in_addr != free_block_count_in_list) {
+        return 0;
+    }
+
+    // 分配的块是否有重叠
+    iter_ptr = heap;
+    char *prev_alloc_ptr = NULL;
+    while (GET_SIZE(HDRP(iter_ptr)) > 0) {
+        if (GET_ALLOC(HDRP(iter_ptr))) {
+            // 当前块是已分配块
+            if (prev_alloc_ptr) {
+                if (NEXT_BLKP(prev_alloc_ptr) > iter_ptr) {
+                    // 上一个已分配块与当前块有重叠部分
+                    return 0;
+                }
+            }
+            prev_alloc_ptr = iter_ptr;
+        }
+
+        iter_ptr = NEXT_BLKP(iter_ptr);
+    }
+
+    // 堆块中的指针是否指向有效的堆地址
+    iter_ptr = heap;
+    while (GET_SIZE(HDRP(iter_ptr)) > 0) {
+        if ((void *) iter_ptr > mem_sbrk(0)) {
+            // 当前块在 sbrk 之外
+            return 0;
+        }
+
+        iter_ptr = NEXT_BLKP(iter_ptr);
+    }
+
+    return 1;
+}
+
+int mm_init(void) {
     // 初始化分离空闲链表
     for (int i = 0; i < LISTMAX; i++) {
         segregated_free_lists[i] = NULL;
@@ -322,6 +422,14 @@ int mm_init(void) {
     // 1 << 6 为堆的初始大小，可以使内存利用率相对较高
     if (extend_heap(1 << 6) == NULL) {
         return -1;
+    }
+
+    // 堆开头设置为序言块
+    heap += DSIZE;
+
+    if (!mm_check()) {
+        printf("Error in mm_init\n");
+        _exit(1);
     }
 
     return 0;
@@ -364,6 +472,11 @@ void *mm_malloc(size_t size) {
 
     ptr = place(ptr, size);
 
+    if (!mm_check()) {
+        printf("Error in mm_malloc\n");
+        _exit(1);
+    }
+
     return ptr;
 }
 
@@ -375,6 +488,11 @@ void mm_free(void *ptr) {
 
     insert_node(ptr, size);
     coalesce(ptr);
+
+    if (!mm_check()) {
+        printf("Error in mm_free\n");
+        _exit(1);
+    }
 }
 
 void *mm_realloc(void *ptr, size_t size) {
@@ -416,6 +534,11 @@ void *mm_realloc(void *ptr, size_t size) {
         mm_free(ptr);
 
         return new_block;
+    }
+
+    if (!mm_check()) {
+        printf("Error in mm_realloc\n");
+        _exit(1);
     }
 
     return ptr;
